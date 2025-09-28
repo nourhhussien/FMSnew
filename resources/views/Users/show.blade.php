@@ -30,7 +30,7 @@
     @foreach($users as $user)
       
     
-      @if(Auth::user()->hasRole('admin'))
+      @if(Auth::user()->hasRole('admin') )
 
 
 

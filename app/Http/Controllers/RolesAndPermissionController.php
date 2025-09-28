@@ -9,20 +9,45 @@ use Illuminate\Http\Request;
 
 class RolesAndPermissionController extends Controller
 {
-    public function addPermissons(Request $request) {
-       
-        $permissions = [
-            'access dashboard',
-            'users management',
-            'register',
-
-        ];
-        foreach($permissions as $permission){
-            Permission::create(['name' => $permission]);
-        }
+    public function addPermissons( Request $request) {
+         
+            $validated = $request->validate([
+                'permission_name' => 'required|string|unique:permissions,name',
+                 
+            ]);
+            Permission::create(['name' => $validated['permission_name'] , 'guard_name' => 'web']);
 
 
+
+        return redirect()->back()->with('success', 'Permission created successfully.');
     }
+
+
+   public function showForm(Request $request) {
+    $permissions = Permission::all();
+    $editPermission = null;
+    if ($request->has('edit')) {
+        $editPermission = Permission::findOrFail($request->get('edit'));
+    }   
+
+    return view('RolesAndpermissions.create_permissions' , compact( 'permissions' , 'editPermission') ) ;
+   }
+
+   
+   public function updatePermission(Request $request, $id){
+
+    $validated = $request->validate([
+       'permission_name' => 'required|string|unique:permissions,name,' . $id,
+         
+    ]);
+    $permission = Permission::findById($id);
+     
+    $permission->update(['name' => $validated['permission_name']]);
+
+     return redirect()->route('RolesAndpermissions.showForm')->with('success', 'Permission updated successfully.');
+   }
+
+
 
     public function show(){
         $roles = role::all();
@@ -34,47 +59,41 @@ class RolesAndPermissionController extends Controller
 
 
    public function create_roles() { 
-    $users = User::all();
     $permissions = Permission::all();
-    return view('RolesAndpermissions.create_roles' , compact('users' , 'permissions') ) ;
+    return view('RolesAndpermissions.create_roles' , compact( 'permissions') ) ;
    }
     
 
-
-    public function create(Request $request) {
-
-         $validated = $request->validate([
-        'name' => 'required|string',
-        'permission' => 'nullable|array',
-        'user' => 'required|array',
+public function create(Request $request) {
+     
+   $validated = $request->validate([
+        'role_name' => 'required|string',
+        'permissions' => 'required|array',
+        'permissions.*' => 'string|exists:permissions,name',
     ]);
 
-        $roles = Role::create(['name'=> $validated['name']]);
+    // Create the role once
+    $role = Role::create([
+        'name' => $validated['role_name']
+       
+    ]);
 
-        
+    // Assign selected permissions to that role
+    foreach($request->permissions as $permissionName) {
 
-        foreach ($validated['permission'] ?? [] as $permission){
-
-            $roles = Role::create(['name'=> $permission]);
-            
-            $roles->givePermissionTo($permission);
-        }
-
-        foreach ( $validated['user'] ?? [] as $userId){
-
-            $user = User::find($userId);
-            $user->assignRole($roles->name);
-        }
-
-         return redirect()->route('RolesAndpermissions.show')->with('success','add new permission');
+        $permission = Permission::firstOrCreate(['name' => $permissionName]);
+        $role->givePermissionTo($permission);
     }
 
-    
+      return redirect()->route('RolesAndpermissions.show')->with('success', 'Role created successfully.'); 
+
+    }
+
           public function edit($id)
           {
               $role = Role::findById($id);
               $permissions = Permission::all();
-              $rolePermissions = $role->permissions->pluck('name')->toArray();
+              $rolePermissions = $role->permissions->pluck('id')->toArray();
           
               return view('RolesAndpermissions.edit', compact('role', 'permissions', 'rolePermissions'));
           }
@@ -82,28 +101,62 @@ class RolesAndPermissionController extends Controller
 
           public function update(Request $request, $id)
           {
-              $role = Role::findById($id);
-              $role->name = $request->name;
-              $role->save();
-          
-              $role->syncPermissions($request->permissions);
-          
-              return redirect()->route('RolesAndpermissions.show')->with('success', 'Role updated successfully.');
+                $validated = $request->validate([
+                    'role_name' => 'required|string',
+                    'permissions' => 'required|array',
+                    'permissions.*' => 'integer|exists:permissions,id',
+                ]);
+            
+                $role = Role::findById($id);
+                if (!$role) {
+                    return redirect()->back()->with('error', 'Role not found.');
+                }
+            
+                // Update role name
+                $role->name = $validated['role_name'];
+                $role->save();
+            
+                $permissionsIds = $validated['permissions'];
+
+                $permissions = Permission::whereIn('id', $permissionsIds)
+                         ->pluck('name')
+                         ->toArray();
+
+                $role->syncPermissions($permissions);
+
+            
+                return redirect()->route('RolesAndpermissions.show')->with('success', 'Role updated successfully.');
+
+
+
           }
 
 
-          public function destroy($id)
+          public function destroy_roles($id)
           {
               $role = Role::findById($id);
               if ($role) {
                   $role->delete();
-                  return redirect()->route('RolesAndpermissions.show')->with('success', 'Role deleted successfully.');
+                  return redirect()->back()->with('success', 'Role deleted successfully.');
               } else {
-                  return redirect()->route('RolesAndpermissions.show')->with('error', 'Role not found.');
+                  return redirect()->back()->with('error', 'Role not found.');
               }
           }
 
         
+          public function destroy_permissions($id)
+          {
+            $permission = Permission::findById($id);
+            if($permission){
+                $permission->delete();
+                return redirect()->back()->with('success', 'Permission deleted successfully.');
+            
+            }  else {
+               return redirect()->back()->with('error', 'Permission not found.');
+        }
+    }
+
+       
 
 }
 

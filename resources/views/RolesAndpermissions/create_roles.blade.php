@@ -16,7 +16,7 @@
              <form action="{{ url('/RolesAndpermissions/create') }}" method="POST">
               @csrf
             <label class="form-label" for="name">{{ __('Role Name') }}</label>
-            <input type="text" class="form-control" id="Role" required name="name" >
+            <input type="text" class="form-control" id="Role" required name="role_name" >
             
           </div>
        </div>
@@ -29,6 +29,7 @@
 
 <thead>
         <tr>
+            
             <th scope="col">{{ ('Name') }}</th>
             <th scope="col">{{ ('Permisssion') }}</th>
         </tr>
@@ -38,7 +39,7 @@
    <tr>            
     <td>{{ $Permission->name}}</td>
    <td> <div>  
-    <input class="form-check-input" type="checkbox" id="permission_{{ $Permission->id }}" value="{{ $Permission->name}}"  name="Permission[]">
+    <input class="form-check-input" type="checkbox" id="permission_{{ $Permission->id }}" value="{{ $Permission->name}}"  name="permissions[]">
     <label class="checkmark" for="permission_{{ $Permission->id }}"></label>
 
   </div>
@@ -50,17 +51,7 @@
   </table>
 </div>
     
-<div class="col-4 p-5"> 
-    <h2>Users</h2>
 
-       <select name="user[]" id="users" multiple>
-               @foreach ($users as $user)
-
-               <option value="{{$user->id }}">{{ $user->name }}</option>
-              @endforeach
-                
-          </select>
-       </div>
        
 </div> 
 

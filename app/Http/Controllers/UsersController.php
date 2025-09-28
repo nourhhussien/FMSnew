@@ -37,16 +37,38 @@ class UsersController extends Controller
 
     public function edit($user_id)
     {
-        $profiles = profile::where('user_id', $user_id)->firstOrFail();
-        return view('profiles.edit', compact('profiles'));
+        $user = User::find($user_id);
+        $roles = Role::all();
+        if (!$user) {
+            return redirect()->route('users.show')->with('error', 'User not found.');
+        }
+        return view('Users.edit', compact('user', 'roles'));
     }
 
     public function update(Request $request)
     {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $request->id,
+            'password' => 'nullable|string|min:8|confirmed',
+            'role' => 'nullable',
+        ]);
+
         $user = User::find($request->id);
-        $user->name = $request->name;
-        $user->email = $request->email;
+        if (!$user) {
+            return redirect()->route('users.show')->with('error', 'User not found.');
+        }
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        if (!empty($validated['password'])) {
+            $user->password = bcrypt($validated['password']);
+        }
         $user->save();
+
+        if (!empty($validated['role'])) {
+            $user->syncRoles([$validated['role']]);
+        }
 
         return redirect()->route('users.show')->with('success', 'User updated successfully.');
     }

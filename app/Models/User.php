@@ -59,5 +59,5 @@ public function medias(){
     return $this->hasMany('app/Media');
 }
 
-
+ use HasRoles;
 }
